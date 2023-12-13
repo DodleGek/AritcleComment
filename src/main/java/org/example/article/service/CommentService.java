@@ -5,6 +5,10 @@ import org.example.article.po.Comment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,10 +17,12 @@ import java.util.List;
 public class CommentService {
     //注入dao
     private final CommentRepository commentRepository;
+    private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public CommentService(CommentRepository commentRepository) {
+    public CommentService(CommentRepository commentRepository, MongoTemplate mongoTemplate) {
         this.commentRepository = commentRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /**
@@ -75,6 +81,19 @@ public class CommentService {
     public Page<Comment> findCommentListBy(String parentid, int page, int size) {
         //调用dao
         return commentRepository.findByParentid(parentid, PageRequest.of(page - 1, size));
+    }
+
+    /**
+     * 点赞数+1
+     * @param id 评论id
+     */
+    public void updateCommentLikenum(String id) {
+        //查询条件
+        Query query = Query.query(Criteria.where("_id").is(id));
+        //更新条件
+        Update update = new Update();
+        update.inc("likenum");
+        mongoTemplate.updateFirst(query, update, Comment.class);
     }
 
 }
