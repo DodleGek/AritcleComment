@@ -52,4 +52,9 @@ public class CommenatServiceTest {
         System.out.println(page.getContent());
 
     }
+
+    @Test
+    public void testUpdateCommentLikenum(){
+        commentService.updateCommentLikenum("65795c790b3ade4a690167d6");
+    }
 }
