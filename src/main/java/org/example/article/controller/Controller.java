@@ -88,6 +88,5 @@ public class Controller {
                 return "取消点赞成功"; // 返回取消点赞成功的消息
             }
         }
-
     }
 }
