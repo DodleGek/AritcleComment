@@ -31,17 +31,12 @@ public class CommentService {
      * @param comment 要保存的评论对象
      */
     public void saveComment(Comment comment) {
-        // 如果Comment对象的ID已存在，则更新记录；否则，创建新记录
-        commentRepository.save(comment);
-    }
+        // 检查评论的ID是否已经存在
+        if (commentRepository.findById(comment.getId()).isPresent()) {
+            throw new IllegalArgumentException("评论id已经存在: " + comment.getId());
+        }
 
-    /**
-     * 更新评论
-     *
-     * @param comment 要更新的评论对象
-     */
-    public void updateComment(Comment comment) {
-        // 保存或更新评论
+        // 如果Comment对象的ID不存在，则保存新记录
         commentRepository.save(comment);
     }
 
@@ -56,13 +51,24 @@ public class CommentService {
     }
 
     /**
+     * 更新评论
+     *
+     * @param comment 要更新的评论对象
+     */
+    public void updateComment(Comment comment) {
+        // 保存或更新评论
+        commentRepository.save(comment);
+    }
+
+    /**
      * 查询所有评论
      *
+     * @param articleId 文章ID
      * @return 返回所有评论的列表
      */
-    public List<Comment> findCommentList() {
+    public List<Comment> findCommentList(String articleId) {
         // 查询所有评论
-        return commentRepository.findAll();
+        return commentRepository.findByArticleid(articleId);
     }
 
     /**
@@ -80,25 +86,40 @@ public class CommentService {
      * 根据父评论的ID查询子评论，并进行分页处理
      *
      * @param parentid 父评论的ID
-     * @param page 当前页码
-     * @param size 每页显示的评论数量
+     * @param page     当前页码
+     * @param size     每页显示的评论数量
      * @return 返回一个Page对象，包含查询到的子评论列表和分页信息
      */
-    public Page<Comment> findCommentListBy(String parentid, int page, int size) {
+    public Page<Comment> findCommentListByParentid(String parentid, int page, int size) {
         // 根据父评论的ID查询子评论，并进行分页处理
         return commentRepository.findByParentid(parentid, PageRequest.of(page - 1, size));
     }
 
     /**
      * 对指定评论的点赞数进行+1操作
+     *
      * @param id 评论的ID
      */
-    public void updateCommentLikenum(String id) {
+    public void incrementCommentLikenum(String id) {
         // 构建查询条件
         Query query = Query.query(Criteria.where("_id").is(id));
         // 构建更新条件，使用$inc操作符，表示要增加的字段
         Update update = new Update();
         update.inc("likenum");
+        // 更新第一个匹配的文档
+        mongoTemplate.updateFirst(query, update, Comment.class);
+    }
+    /**
+     * 对指定评论的点赞数进行-1操作
+     *
+     * @param id 评论的ID
+     */
+    public void decrementCommentLikenum(String id) {
+        // 构建查询条件
+        Query query = Query.query(Criteria.where("_id").is(id));
+        // 构建更新条件，使用$inc操作符，表示要减少的字段
+        Update update = new Update();
+        update.inc("likenum", -1); // 将点赞数减1
         // 更新第一个匹配的文档
         mongoTemplate.updateFirst(query, update, Comment.class);
     }
