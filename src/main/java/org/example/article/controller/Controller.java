@@ -7,90 +7,87 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 public class Controller {
     private final CommentService commentService;
 
+    // 通过构造器注入CommentService
     public Controller(CommentService commentService) {
         this.commentService = commentService;
     }
 
-
-    @RequestMapping(value = "like", method = RequestMethod.POST)
-    @ResponseBody
-    public String likeComment(@RequestParam String id) {
-        commentService.incrementCommentLikenum(id);
-        return "点赞成功";
-    }
-
-    @RequestMapping(value = "unlike", method = RequestMethod.POST)
-    @ResponseBody
-    public String unlikeComment(@RequestParam String id) {
-        commentService.decrementCommentLikenum(id);
-        return "取消点赞成功";
-    }
-
-
-    @RequestMapping(value = "reply", method = RequestMethod.POST) // 映射到POST请求的/reply路径
-    @ResponseBody // 表示该方法的返回结果直接写入 HTTP 响应体中
-    public String replyToComment(@RequestParam String parentid, @RequestParam String content) {
-        Comment comment = new Comment(); // 创建一个新的评论对象
-        comment.setArticleid("articleid"); // 设置评论所属的文章ID，这里需要替换为实际的文章ID
+    // 处理POST请求，创建新的评论
+    @PostMapping("/articles/{articleId}/comments/{id}")
+    public ResponseEntity<Comment> createComment(@PathVariable String articleId, @RequestBody String content, @PathVariable String id) {
+        Comment comment = new Comment();
+        comment.setId(id);
+        comment.setArticleid(articleId); // 设置评论的文章ID
         comment.setContent(content); // 设置评论的内容
-        comment.setCreatedatetime(LocalDateTime.now()); // 设置评论的创建时间为当前时间
-        comment.setUserid("1003"); // 设置发表评论的用户ID，这里需要替换为实际的用户ID
-        comment.setNickname("测试用户"); // 设置发表评论的用户昵称，这里需要替换为实际的用户昵称
-        comment.setState("0"); // 设置评论的状态为"0"
-        comment.setLikenum(0); // 设置评论的点赞数为0
-        comment.setParentid(parentid); // 设置评论的父评论ID，即该评论是回复哪个评论的
-        commentService.saveComment(comment); // 调用服务层的saveComment方法保存评论
-        return "回复成功"; // 返回"回复成功"字符串
+        commentService.saveComment(comment); // 保存评论
+        return new ResponseEntity<>(comment, HttpStatus.CREATED); // 返回创建的评论和HTTP状态码201
     }
 
-    @PostMapping("comment")
-    public ResponseEntity<Comment> createComment(@RequestBody Comment comment) {
-        commentService.saveComment(comment);
-        return new ResponseEntity<>(comment, HttpStatus.CREATED);
-    }
-
-    @DeleteMapping("/{id}")
+    // 处理DELETE请求，删除指定ID的评论
+    @DeleteMapping("/comments/{id}")
     @ResponseBody
     public String deleteComment(@PathVariable String id) {
-        commentService.deleteCommentById(id);
-        return "删除成功";
+        commentService.deleteCommentById(id); // 删除评论
+        return "删除成功"; // 返回删除成功的消息
     }
 
-    @PutMapping("/{id}")
-    public String updateComment(@PathVariable String id, @RequestBody Comment comment) {
-        comment.setId(id);
-        commentService.updateComment(comment);
-        return "更新成功";
+    // 处理PUT请求，更新指定ID的评论
+    @PutMapping("/comments/{id}")
+    public String updateComment(@PathVariable String id, @RequestBody String content) {
+        Comment comment = commentService.findCommentById(id); // 查找评论
+        if (comment != null) {
+            comment.setContent(content); // 更新评论的内容
+            commentService.updateComment(comment); // 更新评论
+            return "更新成功"; // 返回更新成功的消息
+        } else {
+            return "评论不存在"; // 如果评论不存在，返回错误消息
+        }
     }
 
+    // 处理GET请求，获取指定文章ID的所有评论
     @GetMapping("/articles/{articleId}/comments")
     public List<Comment> findCommentList(@PathVariable String articleId) {
-        return commentService.findCommentList(articleId);
+        return commentService.findCommentList(articleId); // 返回评论列表
     }
 
+    // 处理GET请求，获取指定父评论ID的所有子评论，并进行分页处理
     @GetMapping("/parent/{parentid}")
     public Page<Comment> findCommentListByParentid(@PathVariable String parentid,
                                                    @RequestParam int page,
                                                    @RequestParam int size) {
-        return commentService.findCommentListByParentid(parentid, page, size);
+        return commentService.findCommentListByParentid(parentid, page, size); // 返回子评论的分页列表
     }
 
+    // 处理PUT请求，对指定ID的评论进行点赞（点赞数+1）
     @PutMapping("/like/{id}")
     public String incrementCommentLikenum(@PathVariable String id) {
-        commentService.incrementCommentLikenum(id);
-        return "点赞成功";
+        if (commentService.findCommentById(id) == null) {
+            return "评论不存在";
+        } else {
+            commentService.incrementCommentLikenum(id); // 点赞
+            return "点赞成功"; // 返回点赞成功的消息
+        }
     }
 
+    // 处理PUT请求，对指定ID的评论取消点赞（点赞数-1）
     @PutMapping("/unlike/{id}")
     public String decrementCommentLikenum(@PathVariable String id) {
-        commentService.decrementCommentLikenum(id);
-        return "取消点赞成功";
+        if (commentService.findCommentById(id) == null) {
+            return "评论不存在";
+        } else {
+            if (commentService.findCommentById(id).getLikenum() == 0) {
+                return "点赞数不能为负数";
+            } else {
+                commentService.decrementCommentLikenum(id); // 取消点赞
+                return "取消点赞成功"; // 返回取消点赞成功的消息
+            }
+        }
+
     }
 }
